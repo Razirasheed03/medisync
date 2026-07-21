@@ -3,13 +3,20 @@ export interface ApiResponse<T> {
   success: true
   message: string
   data: T
+  meta: Record<string, unknown>
+}
+
+export interface ApiValidationIssue {
+  path: string
+  message: string
 }
 
 /** Shape of every error response returned by the MediSync API. */
 export interface ApiErrorResponse {
   success: false
   message: string
-  errors?: Array<{ field: string; message: string }>
+  data: { issues: ApiValidationIssue[] } | null
+  meta: Record<string, unknown>
 }
 
 export interface PaginatedData<T> {

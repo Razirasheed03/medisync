@@ -1,14 +1,23 @@
 import { Navigate, Outlet } from 'react-router-dom'
 
-import { isAuthenticated } from '@/features/auth'
+import { LoadingScreen } from '@/components/common'
+import { useAuth } from '@/store'
+
 import { paths } from './paths'
 
 /**
- * Guards public-only routes (e.g. login). Authenticated users are
- * redirected to the dashboard instead.
+ * Guards public-only routes (e.g. login). Waits for session restoration
+ * to settle so a returning user is not shown the login form for a
+ * moment before being redirected to the dashboard.
  */
 export function PublicRoute() {
-  if (isAuthenticated()) {
+  const { isAuthenticated, isRestoring } = useAuth()
+
+  if (isRestoring) {
+    return <LoadingScreen label="Checking your session…" />
+  }
+
+  if (isAuthenticated) {
     return <Navigate to={paths.dashboard} replace />
   }
 

@@ -1,1 +1,2 @@
-export * from './services/session'
+export * from './services/authService'
+export * from './types'

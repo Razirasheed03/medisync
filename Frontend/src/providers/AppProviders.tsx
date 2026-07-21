@@ -5,6 +5,8 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { ErrorBoundary } from '@/components/common'
 import { queryClient } from '@/lib/queryClient'
 
+import { AuthProvider } from './AuthProvider'
+
 interface AppProvidersProps {
   children: ReactNode
 }
@@ -13,7 +15,9 @@ interface AppProvidersProps {
 export function AppProviders({ children }: AppProvidersProps) {
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>{children}</AuthProvider>
+      </QueryClientProvider>
     </ErrorBoundary>
   )
 }

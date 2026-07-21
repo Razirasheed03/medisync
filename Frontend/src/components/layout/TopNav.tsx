@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { Button } from '@/components/ui'
-import { endSession } from '@/features/auth'
+import { logout } from '@/features/auth'
 import { paths } from '@/routes/paths'
+import { useAuth } from '@/store'
 
 interface TopNavProps {
   onToggleSidebar: () => void
@@ -10,10 +12,17 @@ interface TopNavProps {
 
 export function TopNav({ onToggleSidebar }: TopNavProps) {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const [isSigningOut, setIsSigningOut] = useState(false)
 
-  const handleSignOut = () => {
-    endSession()
-    navigate(paths.login, { replace: true })
+  const handleSignOut = async () => {
+    setIsSigningOut(true)
+
+    try {
+      await logout()
+    } finally {
+      navigate(paths.login, { replace: true })
+    }
   }
 
   return (
@@ -38,16 +47,20 @@ export function TopNav({ onToggleSidebar }: TopNavProps) {
           </svg>
         </button>
         <p className="hidden text-sm text-slate-500 sm:block">
-          Welcome back
+          {user ? `Welcome back, ${user.name}` : 'Welcome back'}
         </p>
       </div>
 
       <div className="flex items-center gap-3">
         <span className="hidden size-9 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700 sm:flex">
-          U
+          {user?.name.charAt(0).toUpperCase() ?? 'U'}
         </span>
-        <Button variant="secondary" onClick={handleSignOut}>
-          Sign out
+        <Button
+          variant="secondary"
+          onClick={handleSignOut}
+          disabled={isSigningOut}
+        >
+          {isSigningOut ? 'Signing out…' : 'Sign out'}
         </Button>
       </div>
     </header>

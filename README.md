@@ -41,6 +41,28 @@ concerns remain in middleware, while startup and shutdown are isolated in
 Build and run production output with `npm run build` and `npm start`.
 The health endpoint is available at `GET /api/v1/health`.
 
+### Seed a super admin (for testing)
+
+Create a super admin account to sign in with:
+
+```bash
+cd Backend && npm run seed
+```
+
+This creates (or resets) the following test account:
+
+| Field    | Value                        |
+| -------- | ---------------------------- |
+| Email    | `superadmin@medisync.test`   |
+| Password | `MediSync@Test2026!`         |
+| Role     | `SUPER_ADMIN`                |
+
+Override the defaults with the `SEED_SUPER_ADMIN_EMAIL`,
+`SEED_SUPER_ADMIN_PASSWORD`, and `SEED_SUPER_ADMIN_NAME` environment
+variables. The seed is idempotent: re-running it updates the existing
+account instead of creating duplicates. Use these credentials for local
+testing only.
+
 ## Frontend foundation
 
 The frontend lives in `Frontend/` and uses React, TypeScript, Vite,
