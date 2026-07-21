@@ -19,7 +19,7 @@ export const verifyJWT: RequestHandler = (request, _response, next) => {
   }
 
   try {
-    request.auth = verifyAccessToken(token);
+    request.user = verifyAccessToken(token);
     next();
   } catch (error) {
     next(error);
