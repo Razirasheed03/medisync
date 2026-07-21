@@ -3,9 +3,14 @@ import type { ZodType } from "zod";
 
 import { ApiError } from "../utils/api-error.js";
 
-export const validateBody = (schema: ZodType): RequestHandler => {
+type RequestPart = "body" | "params";
+
+const validateRequestPart = (
+  part: RequestPart,
+  schema: ZodType,
+): RequestHandler => {
   return (request, _response, next): void => {
-    const result = schema.safeParse(request.body);
+    const result = schema.safeParse(request[part]);
 
     if (!result.success) {
       next(
@@ -19,7 +24,18 @@ export const validateBody = (schema: ZodType): RequestHandler => {
       return;
     }
 
-    request.body = result.data;
+    if (part === "body") {
+      request.body = result.data;
+    } else {
+      request.params = result.data as Record<string, string>;
+    }
+
     next();
   };
 };
+
+export const validateBody = (schema: ZodType): RequestHandler =>
+  validateRequestPart("body", schema);
+
+export const validateParams = (schema: ZodType): RequestHandler =>
+  validateRequestPart("params", schema);
