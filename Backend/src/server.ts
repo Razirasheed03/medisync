@@ -4,6 +4,7 @@ import { app } from "./app.js";
 import { connectDatabase, disconnectDatabase } from "./config/db.js";
 import { env } from "./config/env.js";
 import { logger } from "./lib/logger.js";
+import { closeSocket, initializeSocket } from "./lib/socket.js";
 
 let server: Server | undefined;
 let isShuttingDown = false;
@@ -14,6 +15,7 @@ const startServer = async (): Promise<void> => {
   server = app.listen(env.PORT, () => {
     logger.info({ port: env.PORT }, "HTTP server started");
   });
+  initializeSocket(server);
 };
 
 const shutdown = async (signal: string): Promise<void> => {
@@ -28,9 +30,18 @@ const shutdown = async (signal: string): Promise<void> => {
   }, 10_000);
   forceExitTimer.unref();
 
+  // Closing Socket.IO also closes the HTTP server it is attached to,
+  // so a second close on the raw server must tolerate an already-closed
+  // server instead of rejecting.
+  await closeSocket();
+
   if (server) {
     await new Promise<void>((resolve, reject) => {
-      server?.close((error) => (error ? reject(error) : resolve()));
+      server?.close((error) =>
+        error && (error as NodeJS.ErrnoException).code !== "ERR_SERVER_NOT_RUNNING"
+          ? reject(error)
+          : resolve(),
+      );
     });
   }
 

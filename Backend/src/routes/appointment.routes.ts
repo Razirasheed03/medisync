@@ -5,8 +5,10 @@ import {
   createAppointmentController,
   getAppointmentController,
   listAppointmentsController,
+  markAppointmentArrivedController,
   updateAppointmentController,
 } from "../controllers/appointment.controller.js";
+import { authorize } from "../middlewares/authorize.middleware.js";
 import {
   validateBody,
   validateParams,
@@ -27,6 +29,7 @@ appointmentRouter.use(verifyJWT);
 
 appointmentRouter.post(
   "/",
+  authorize("SUPER_ADMIN", "RECEPTIONIST"),
   validateBody(createAppointmentBodySchema),
   asyncHandler(createAppointmentController),
 );
@@ -47,7 +50,14 @@ appointmentRouter.patch(
   asyncHandler(updateAppointmentController),
 );
 appointmentRouter.patch(
+  "/:id/arrive",
+  authorize("SUPER_ADMIN", "RECEPTIONIST"),
+  validateParams(appointmentIdParamsSchema),
+  asyncHandler(markAppointmentArrivedController),
+);
+appointmentRouter.patch(
   "/:id/cancel",
+  authorize("SUPER_ADMIN", "RECEPTIONIST"),
   validateParams(appointmentIdParamsSchema),
   asyncHandler(cancelAppointmentController),
 );

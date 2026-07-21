@@ -8,7 +8,9 @@ export const getDoctorSlotsController = async (
   response: Response,
 ): Promise<void> => {
   const date = request.query.date as string;
-  const duration = Number(request.query.duration ?? 30);
+  const duration = request.query.duration
+    ? Number(request.query.duration)
+    : undefined;
   const result = await generateDoctorSlots(
     request.params.doctorId as string,
     date,

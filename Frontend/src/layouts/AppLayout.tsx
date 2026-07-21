@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 
 import { Sidebar, TopNav } from '@/components/layout'
+import { useRealtimeAppointments } from '@/hooks'
 
 /**
  * Authenticated application shell: sidebar, top navigation,
@@ -9,6 +10,7 @@ import { Sidebar, TopNav } from '@/components/layout'
  */
 export function AppLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  useRealtimeAppointments()
 
   return (
     <div className="flex h-screen overflow-hidden">

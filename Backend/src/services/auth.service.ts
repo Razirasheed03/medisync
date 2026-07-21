@@ -14,6 +14,7 @@ import type {
 } from "../types/auth.js";
 import { ApiError } from "../utils/api-error.js";
 import type { LoginBody } from "../validators/auth.validator.js";
+import { recordAuditEvent } from "./audit.service.js";
 
 export interface PublicUser {
   readonly id: string;
@@ -101,7 +102,10 @@ const verifyToken = (
 };
 
 export const login = async (credentials: LoginBody): Promise<AuthenticationResult> => {
-  const user = await UserModel.findOne({ email: credentials.email }).select("+password");
+  const user = await UserModel.findOne({
+    email: credentials.email,
+    status: { $ne: "INACTIVE" },
+  }).select("+password");
 
   if (!user || !(await bcrypt.compare(credentials.password, user.password))) {
     throw new ApiError(401, "Invalid email or password");
@@ -112,6 +116,13 @@ export const login = async (credentials: LoginBody): Promise<AuthenticationResul
     { _id: user._id },
     { $set: { refreshToken: hashRefreshToken(tokens.refreshToken) } },
   );
+
+  await recordAuditEvent({
+    actor: { id: user.id as string, name: user.name, role: user.role },
+    action: "LOGIN",
+    entityType: "User",
+    entityId: user.id as string,
+  });
 
   return {
     ...tokens,
@@ -129,6 +140,7 @@ export const refresh = async (refreshToken: string): Promise<AuthenticationResul
   const user = await UserModel.findOne({
     _id: payload.sub,
     refreshToken: currentTokenHash,
+    status: { $ne: "INACTIVE" },
   });
 
   if (!user) {

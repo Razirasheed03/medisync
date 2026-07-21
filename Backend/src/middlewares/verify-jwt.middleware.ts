@@ -1,9 +1,10 @@
 import type { RequestHandler } from "express";
 
+import { UserModel } from "../models/user.model.js";
 import { verifyAccessToken } from "../services/auth.service.js";
 import { ApiError } from "../utils/api-error.js";
 
-export const verifyJWT: RequestHandler = (request, _response, next) => {
+export const verifyJWT: RequestHandler = async (request, _response, next) => {
   const authorization = request.get("authorization");
 
   if (!authorization?.startsWith("Bearer ")) {
@@ -19,7 +20,17 @@ export const verifyJWT: RequestHandler = (request, _response, next) => {
   }
 
   try {
-    request.user = verifyAccessToken(token);
+    const authenticatedUser = verifyAccessToken(token);
+    const activeUser = await UserModel.findOne({
+      _id: authenticatedUser.id,
+      status: { $ne: "INACTIVE" },
+    }).select("role name");
+
+    if (!activeUser || activeUser.role !== authenticatedUser.role) {
+      throw new ApiError(401, "User account is inactive or unavailable");
+    }
+
+    request.user = { ...authenticatedUser, name: activeUser.name };
     next();
   } catch (error) {
     next(error);

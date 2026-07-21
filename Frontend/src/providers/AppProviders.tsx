@@ -6,6 +6,7 @@ import { ErrorBoundary } from '@/components/common'
 import { queryClient } from '@/lib/queryClient'
 
 import { AuthProvider } from './AuthProvider'
+import { ToastProvider } from './ToastProvider'
 
 interface AppProvidersProps {
   children: ReactNode
@@ -16,7 +17,9 @@ export function AppProviders({ children }: AppProvidersProps) {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>{children}</AuthProvider>
+        <ToastProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </ToastProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   )

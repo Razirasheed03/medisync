@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 
 import { env } from '@/lib/env'
+import { useAuth } from '@/store'
 import { cn } from '@/utils'
 
 import { navItems } from './navigation'
@@ -11,6 +12,11 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
+  const { user } = useAuth()
+  const visibleItems = navItems.filter(
+    (item) => !item.roles || (user && item.roles.includes(user.role)),
+  )
+
   return (
     <>
       {/* Mobile backdrop */}
@@ -39,7 +45,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {navItems.map((item) => (
+          {visibleItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

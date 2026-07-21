@@ -1,35 +1,56 @@
 import { Error as MongooseError } from "mongoose";
+import type mongoose from "mongoose";
 
-import type { AppointmentStatus } from "../constants/appointment-status.js";
+import {
+  APPOINTMENT_STATUS_TRANSITIONS,
+  type AppointmentStatus,
+} from "../constants/appointment-status.js";
+import type { Department } from "../constants/department.js";
+import { emitAppointmentEvent } from "../lib/socket.js";
 import {
   AppointmentModel,
+  type Appointment,
   type AppointmentDocument,
 } from "../models/appointment.model.js";
+import { UserModel } from "../models/user.model.js";
+import type { RequestUser } from "../types/auth.js";
 import { ApiError } from "../utils/api-error.js";
 import type {
   CreateAppointmentBody,
   UpdateAppointmentBody,
 } from "../validators/appointment.validator.js";
+import { recordAuditEvent } from "./audit.service.js";
 import { generateDoctorSlots } from "./doctor-slot.service.js";
+import {
+  createPatient,
+  findPatientDocumentOrThrow,
+} from "./patient.service.js";
 
 export interface AppointmentResponse {
   readonly id: string;
+  readonly patientId: string;
   readonly patientName: string;
-  readonly patientEmail: string;
+  readonly patientEmail?: string;
   readonly patientPhone: string;
   readonly doctorId: string;
+  readonly department: Department;
   readonly appointmentDate: string;
   readonly startTime: string;
   readonly endTime: string;
   readonly status: AppointmentStatus;
+  readonly purpose?: string;
   readonly notes?: string;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
 
 export interface ListAppointmentsInput {
+  readonly search?: string;
   readonly doctorId?: string;
+  readonly department?: Department;
   readonly date?: string;
+  readonly dateFrom?: string;
+  readonly dateTo?: string;
   readonly status?: AppointmentStatus;
   readonly page: number;
   readonly limit: number;
@@ -59,14 +80,21 @@ const toAppointmentResponse = (
   appointment: AppointmentDocument,
 ): AppointmentResponse => ({
   id: appointment.id as string,
+  patientId: appointment.patient.toString(),
   patientName: appointment.patientName,
-  patientEmail: appointment.patientEmail,
+  ...(appointment.patientEmail !== undefined
+    ? { patientEmail: appointment.patientEmail }
+    : {}),
   patientPhone: appointment.patientPhone,
   doctorId: appointment.doctor.toString(),
+  department: appointment.department,
   appointmentDate: appointment.appointmentDate,
   startTime: appointment.startTime,
   endTime: appointment.endTime,
   status: appointment.status,
+  ...(appointment.purpose !== undefined
+    ? { purpose: appointment.purpose }
+    : {}),
   ...(appointment.notes !== undefined ? { notes: appointment.notes } : {}),
   createdAt: appointment.createdAt,
   updatedAt: appointment.updatedAt,
@@ -169,8 +197,92 @@ const findAppointmentOrThrow = async (
   return appointment;
 };
 
+const assertActorCanAccess = (
+  actor: RequestUser,
+  appointment: AppointmentDocument,
+): void => {
+  if (
+    actor.role === "DOCTOR" &&
+    appointment.doctor.toString() !== actor.id
+  ) {
+    throw new ApiError(
+      403,
+      "Doctors can only access their own appointments",
+    );
+  }
+};
+
+const assertStatusTransition = (
+  from: AppointmentStatus,
+  to: AppointmentStatus,
+): void => {
+  if (from === to) return;
+
+  if (!APPOINTMENT_STATUS_TRANSITIONS[from].includes(to)) {
+    throw new ApiError(
+      422,
+      `Appointment status cannot change from ${from} to ${to}`,
+    );
+  }
+};
+
+const getDoctorDepartment = async (doctorId: string): Promise<Department> => {
+  const doctor = await UserModel.findOne({
+    _id: doctorId,
+    role: "DOCTOR",
+    status: { $ne: "INACTIVE" },
+  }).select("department");
+
+  if (!doctor) {
+    throw new ApiError(422, "doctorId must reference an existing doctor");
+  }
+
+  return doctor.department ?? "GENERAL_MEDICINE";
+};
+
+interface PatientSnapshot {
+  readonly patientId: string;
+  readonly patientName: string;
+  readonly patientEmail?: string;
+  readonly patientPhone: string;
+}
+
+/**
+ * Resolves the patient for a booking: reuses an existing record when
+ * `patientId` is provided, otherwise auto-creates a new patient.
+ */
+const resolvePatient = async (
+  input: CreateAppointmentBody,
+): Promise<PatientSnapshot> => {
+  if (input.patientId) {
+    const patient = await findPatientDocumentOrThrow(input.patientId);
+    return {
+      patientId: patient.id as string,
+      patientName: patient.name,
+      ...(patient.email !== undefined ? { patientEmail: patient.email } : {}),
+      patientPhone: patient.phone,
+    };
+  }
+
+  const patient = await createPatient({
+    name: input.patientName as string,
+    phone: input.patientPhone as string,
+    ...(input.patientEmail !== undefined
+      ? { email: input.patientEmail }
+      : {}),
+  });
+
+  return {
+    patientId: patient.id,
+    patientName: patient.name,
+    ...(patient.email !== undefined ? { patientEmail: patient.email } : {}),
+    patientPhone: patient.phone,
+  };
+};
+
 export const createAppointment = async (
   input: CreateAppointmentBody,
+  actor: RequestUser,
 ): Promise<AppointmentResponse> => {
   const slot: SlotDetails = {
     doctorId: input.doctorId,
@@ -182,19 +294,41 @@ export const createAppointment = async (
   await assertSlotIsBookable(slot);
   await assertSlotIsAvailable(slot);
 
+  const department = await getDoctorDepartment(input.doctorId);
+  const patient = await resolvePatient(input);
+
   try {
     const appointment = await AppointmentModel.create({
-      patientName: input.patientName,
-      patientEmail: input.patientEmail,
-      patientPhone: input.patientPhone,
+      patient: patient.patientId,
+      patientName: patient.patientName,
+      ...(patient.patientEmail !== undefined
+        ? { patientEmail: patient.patientEmail }
+        : {}),
+      patientPhone: patient.patientPhone,
       doctor: input.doctorId,
+      department,
       appointmentDate: input.appointmentDate,
       startTime: input.startTime,
       endTime: input.endTime,
       status: "BOOKED",
+      ...(input.purpose !== undefined ? { purpose: input.purpose } : {}),
       ...(input.notes !== undefined ? { notes: input.notes } : {}),
     });
-    return toAppointmentResponse(appointment);
+
+    const response = toAppointmentResponse(appointment);
+    await recordAuditEvent({
+      actor,
+      action: "APPOINTMENT_CREATED",
+      entityType: "Appointment",
+      entityId: response.id,
+      metadata: {
+        doctorId: response.doctorId,
+        appointmentDate: response.appointmentDate,
+        startTime: response.startTime,
+      },
+    });
+    emitAppointmentEvent("appointment:created", response);
+    return response;
   } catch (error) {
     return throwPersistenceError(error);
   }
@@ -202,11 +336,34 @@ export const createAppointment = async (
 
 export const listAppointments = async (
   input: ListAppointmentsInput,
+  actor: RequestUser,
 ): Promise<ListAppointmentsResult> => {
-  const filter = {
-    ...(input.doctorId ? { doctor: input.doctorId } : {}),
-    ...(input.date ? { appointmentDate: input.date } : {}),
+  const escapeRegExp = (value: string): string =>
+    value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const search = input.search
+    ? new RegExp(escapeRegExp(input.search), "i")
+    : undefined;
+  const dateRange = {
+    ...(input.dateFrom ? { $gte: input.dateFrom } : {}),
+    ...(input.dateTo ? { $lte: input.dateTo } : {}),
+  };
+  const filter: mongoose.QueryFilter<Appointment> = {
+    // Doctors only ever see their own appointments.
+    ...(actor.role === "DOCTOR"
+      ? { doctor: actor.id }
+      : input.doctorId
+        ? { doctor: input.doctorId }
+        : {}),
+    ...(input.department ? { department: input.department } : {}),
+    ...(input.date
+      ? { appointmentDate: input.date }
+      : Object.keys(dateRange).length > 0
+        ? { appointmentDate: dateRange }
+        : {}),
     ...(input.status ? { status: input.status } : {}),
+    ...(search
+      ? { $or: [{ patientName: search }, { patientPhone: search }] }
+      : {}),
   };
   const sortDirection = input.sortOrder === "asc" ? 1 : -1;
   const skip = (input.page - 1) * input.limit;
@@ -236,14 +393,54 @@ export const listAppointments = async (
 
 export const getAppointment = async (
   appointmentId: string,
-): Promise<AppointmentResponse> =>
-  toAppointmentResponse(await findAppointmentOrThrow(appointmentId));
+  actor: RequestUser,
+): Promise<AppointmentResponse> => {
+  const appointment = await findAppointmentOrThrow(appointmentId);
+  assertActorCanAccess(actor, appointment);
+  return toAppointmentResponse(appointment);
+};
+
+const DOCTOR_UPDATABLE_FIELDS = ["notes", "status"] as const;
 
 export const updateAppointment = async (
   appointmentId: string,
   input: UpdateAppointmentBody,
+  actor: RequestUser,
 ): Promise<AppointmentResponse> => {
   const appointment = await findAppointmentOrThrow(appointmentId);
+  assertActorCanAccess(actor, appointment);
+
+  if (actor.role === "DOCTOR") {
+    const disallowedField = Object.keys(input).find(
+      (field) =>
+        !DOCTOR_UPDATABLE_FIELDS.includes(
+          field as (typeof DOCTOR_UPDATABLE_FIELDS)[number],
+        ),
+    );
+
+    if (disallowedField) {
+      throw new ApiError(
+        403,
+        "Doctors can only update consultation notes and completion status",
+      );
+    }
+
+    if (input.status !== undefined && input.status !== "COMPLETED") {
+      throw new ApiError(
+        403,
+        "Doctors can only mark appointments as completed",
+      );
+    }
+
+    // Consultation starts once the receptionist marks the patient arrived.
+    if (appointment.status !== "ARRIVED") {
+      throw new ApiError(
+        422,
+        "Consultation notes can only be updated after the patient has arrived",
+      );
+    }
+  }
+
   const slot: SlotDetails = {
     doctorId: input.doctorId ?? appointment.doctor.toString(),
     appointmentDate: input.appointmentDate ?? appointment.appointmentDate,
@@ -251,15 +448,20 @@ export const updateAppointment = async (
     endTime: input.endTime ?? appointment.endTime,
   };
   const targetStatus = input.status ?? appointment.status;
+
+  if (input.status !== undefined) {
+    assertStatusTransition(appointment.status, input.status);
+  }
+
+  const doctorChanged = slot.doctorId !== appointment.doctor.toString();
   const slotChanged =
-    slot.doctorId !== appointment.doctor.toString() ||
+    doctorChanged ||
     slot.appointmentDate !== appointment.appointmentDate ||
     slot.startTime !== appointment.startTime ||
     slot.endTime !== appointment.endTime;
   const reactivating =
     appointment.status === "CANCELLED" && targetStatus !== "CANCELLED";
-  const booking =
-    targetStatus === "BOOKED" && appointment.status !== "BOOKED";
+  const booking = targetStatus === "BOOKED" && appointment.status !== "BOOKED";
 
   if (slotChanged || booking) {
     await assertSlotIsBookable(slot);
@@ -270,16 +472,10 @@ export const updateAppointment = async (
   }
 
   appointment.set({
-    ...(input.patientName !== undefined
-      ? { patientName: input.patientName }
-      : {}),
-    ...(input.patientEmail !== undefined
-      ? { patientEmail: input.patientEmail }
-      : {}),
-    ...(input.patientPhone !== undefined
-      ? { patientPhone: input.patientPhone }
-      : {}),
     ...(input.doctorId !== undefined ? { doctor: input.doctorId } : {}),
+    ...(doctorChanged
+      ? { department: await getDoctorDepartment(slot.doctorId) }
+      : {}),
     ...(input.appointmentDate !== undefined
       ? { appointmentDate: input.appointmentDate }
       : {}),
@@ -287,6 +483,12 @@ export const updateAppointment = async (
     ...(input.endTime !== undefined ? { endTime: input.endTime } : {}),
     ...(input.status !== undefined ? { status: input.status } : {}),
   });
+
+  if (input.purpose === null) {
+    appointment.set("purpose", undefined);
+  } else if (input.purpose !== undefined) {
+    appointment.set("purpose", input.purpose);
+  }
 
   if (input.notes === null) {
     appointment.set("notes", undefined);
@@ -296,22 +498,71 @@ export const updateAppointment = async (
 
   try {
     await appointment.save();
-    return toAppointmentResponse(appointment);
+
+    const response = toAppointmentResponse(appointment);
+    await recordAuditEvent({
+      actor,
+      action: "APPOINTMENT_UPDATED",
+      entityType: "Appointment",
+      entityId: response.id,
+      metadata: { updatedFields: Object.keys(input) },
+    });
+    emitAppointmentEvent("appointment:updated", response);
+    return response;
   } catch (error) {
     return throwPersistenceError(error);
   }
 };
 
+export const markAppointmentArrived = async (
+  appointmentId: string,
+  actor: RequestUser,
+): Promise<AppointmentResponse> => {
+  const appointment = await findAppointmentOrThrow(appointmentId);
+
+  if (appointment.status === "ARRIVED") {
+    throw new ApiError(422, "Patient has already been marked as arrived");
+  }
+
+  assertStatusTransition(appointment.status, "ARRIVED");
+
+  appointment.status = "ARRIVED";
+  await appointment.save();
+
+  const response = toAppointmentResponse(appointment);
+  await recordAuditEvent({
+    actor,
+    action: "APPOINTMENT_UPDATED",
+    entityType: "Appointment",
+    entityId: response.id,
+    metadata: { status: "ARRIVED" },
+  });
+  emitAppointmentEvent("appointment:updated", response);
+  return response;
+};
+
 export const cancelAppointment = async (
   appointmentId: string,
+  actor: RequestUser,
 ): Promise<AppointmentResponse> => {
   const appointment = await findAppointmentOrThrow(appointmentId);
 
   if (appointment.status !== "CANCELLED") {
+    assertStatusTransition(appointment.status, "CANCELLED");
     appointment.status = "CANCELLED";
     await appointment.save();
+
+    await recordAuditEvent({
+      actor,
+      action: "APPOINTMENT_CANCELLED",
+      entityType: "Appointment",
+      entityId: appointment.id as string,
+    });
+    emitAppointmentEvent(
+      "appointment:cancelled",
+      toAppointmentResponse(appointment),
+    );
   }
 
   return toAppointmentResponse(appointment);
 };
-

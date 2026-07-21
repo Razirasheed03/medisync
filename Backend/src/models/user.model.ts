@@ -7,13 +7,17 @@ import {
 } from "mongoose";
 
 import { env } from "../config/env.js";
+import { DEPARTMENTS, type Department } from "../constants/department.js";
 import { USER_ROLES, type UserRole } from "../constants/user-role.js";
+import { USER_STATUSES, type UserStatus } from "../constants/user-status.js";
 
 export interface User {
   name: string;
   email: string;
   password: string;
   role: UserRole;
+  status: UserStatus;
+  department?: Department;
   refreshToken: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -48,6 +52,17 @@ const userSchema = new Schema<User, Model<User>>(
       type: String,
       enum: USER_ROLES,
       required: true,
+    },
+    status: {
+      type: String,
+      enum: USER_STATUSES,
+      default: "ACTIVE",
+      required: true,
+      index: true,
+    },
+    department: {
+      type: String,
+      enum: DEPARTMENTS,
     },
     refreshToken: {
       type: String,

@@ -1,21 +1,53 @@
 import type { Request, Response } from "express";
 
+import {
+  getAdminDashboard,
+  getDoctorDashboard,
+  getReceptionDashboard,
+} from "../services/dashboard.service.js";
 import { ApiResponse } from "../utils/api-response.js";
 
-const createDashboardController = (dashboard: string) => {
-  return async (_request: Request, response: Response): Promise<void> => {
-    response.status(200).json(
-      new ApiResponse(`${dashboard} dashboard access granted`, {
-        dashboard,
-      }),
+export const adminDashboardController = async (
+  _request: Request,
+  response: Response,
+): Promise<void> => {
+  response
+    .status(200)
+    .json(
+      new ApiResponse(
+        "Admin dashboard retrieved successfully",
+        await getAdminDashboard(),
+      ),
     );
-  };
 };
 
-export const adminDashboardController = createDashboardController("Admin");
-export const receptionDashboardController =
-  createDashboardController("Reception");
-export const doctorDashboardController = createDashboardController("Doctor");
+export const receptionDashboardController = async (
+  _request: Request,
+  response: Response,
+): Promise<void> => {
+  response
+    .status(200)
+    .json(
+      new ApiResponse(
+        "Reception dashboard retrieved successfully",
+        await getReceptionDashboard(),
+      ),
+    );
+};
+
+export const doctorDashboardController = async (
+  request: Request,
+  response: Response,
+): Promise<void> => {
+  response
+    .status(200)
+    .json(
+      new ApiResponse(
+        "Doctor dashboard retrieved successfully",
+        await getDoctorDashboard(request.user!.id),
+      ),
+    );
+};
 
 export const profileController = async (
   request: Request,

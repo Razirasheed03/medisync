@@ -27,13 +27,13 @@ export const createDoctorScheduleController = async (
 };
 
 export const listDoctorSchedulesController = async (
-  _request: Request,
+  request: Request,
   response: Response,
 ): Promise<void> => {
   response.status(200).json(
     new ApiResponse(
       "Doctor schedules retrieved successfully",
-      await listDoctorSchedules(),
+      await listDoctorSchedules(request.user!),
     ),
   );
 };
@@ -45,7 +45,7 @@ export const getDoctorScheduleController = async (
   response.status(200).json(
     new ApiResponse(
       "Doctor schedule retrieved successfully",
-      await getDoctorSchedule(request.params.doctorId as string),
+      await getDoctorSchedule(request.params.doctorId as string, request.user!),
     ),
   );
 };

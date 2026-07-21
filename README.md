@@ -1,106 +1,226 @@
 # MediSync
 
-Enterprise EMR Appointment Management System.
+Enterprise EMR Appointment Management System for clinics. Supports role-based
+access for Super Admins, Receptionists, and Doctors with dynamic slot
+generation, concurrent-safe booking, audit logging, and real-time updates.
 
-## Backend foundation
+## Stack
 
-The backend lives in `Backend/` and uses Node.js, Express, TypeScript, MongoDB,
-and Mongoose. It is intentionally limited to infrastructure and a health
-endpoint; business modules will be added in later implementation phases.
+| Layer    | Technologies                                                                 |
+| -------- | ---------------------------------------------------------------------------- |
+| Backend  | Node.js, Express, TypeScript, MongoDB, Mongoose, JWT, Socket.IO, Zod, Pino   |
+| Frontend | React, TypeScript, Vite, Tailwind CSS, React Router, Axios, TanStack Query, React Hook Form + Zod, Socket.IO Client |
 
-### Folder structure
+## Features
+
+- JWT access + refresh authentication with bcrypt password hashing
+- RBAC for `SUPER_ADMIN`, `RECEPTIONIST`, and `DOCTOR`
+- Doctor schedule management (working days, sessions, breaks, slot duration)
+- Dynamic slot generation that never overlaps breaks or booked appointments
+- Patient search / registration and appointment booking
+- Appointment lifecycle: Booked → Arrived → Completed / Cancelled
+- Server-side filtering, sorting, and pagination
+- Audit trail for login and appointment create / update / cancel
+- Real-time appointment updates over Socket.IO
+- Role-specific dashboards
+
+## Architecture overview
+
+- **Backend** — layered Express API: `routes` → `middlewares` (JWT, RBAC,
+  Zod validation) → `controllers` (thin HTTP adapters) → `services` (all
+  business logic) → Mongoose `models`. Responses use a shared envelope and a
+  centralized error handler.
+- **Frontend** — feature-based React SPA. Each feature owns its types,
+  services, hooks, and components. Axios centralizes auth and token refresh;
+  TanStack Query handles server state; React Hook Form + Zod handle forms.
+- **Real-time** — the API broadcasts appointment events over Socket.IO;
+  clients invalidate the relevant queries to update live.
+
+Design rationale is documented in [ENGINEERING_DECISIONS.md](ENGINEERING_DECISIONS.md).
+
+## Project structure
 
 ```text
-Backend/src/
-├── config/       # Validated environment and database configuration
-├── controllers/  # HTTP request/response adapters
-├── services/     # Application and business logic
-├── routes/       # Endpoint declarations
-├── models/       # Mongoose schemas and models
-├── middlewares/  # Cross-cutting Express middleware
-├── validators/   # Reusable request validation
-├── utils/        # Framework-independent helpers
-├── constants/    # Shared immutable values
-├── lib/          # Configured third-party integrations
-├── types/        # Shared TypeScript declarations
-├── app.ts        # Express application composition
-└── server.ts     # Database connection and process lifecycle
+Medisync/
+├── Backend/                 # Express API
+│   └── src/
+│       ├── config/          # Env + database
+│       ├── constants/
+│       ├── controllers/     # Thin HTTP adapters
+│       ├── lib/             # Logger, Socket.IO
+│       ├── middlewares/
+│       ├── models/
+│       ├── routes/
+│       ├── scripts/         # Seed super admin
+│       ├── services/        # Business logic
+│       ├── types/
+│       ├── utils/
+│       └── validators/
+├── Frontend/                # React SPA
+│   └── src/
+│       ├── api/             # Axios client
+│       ├── components/
+│       ├── features/        # appointments, auth, dashboard, patients, schedules, users
+│       ├── hooks/
+│       ├── layouts/
+│       ├── pages/
+│       ├── providers/
+│       ├── routes/
+│       └── store/
+├── docs/
+│   ├── API.md
+│   └── DATABASE.md
+├── ENGINEERING_DECISIONS.md
+└── README.md
 ```
 
-The request flow is `Routes → Controllers → Services → Models`. Cross-cutting
-concerns remain in middleware, while startup and shutdown are isolated in
-`server.ts`, allowing the Express app to be imported independently.
+## Database design
 
-### Local setup
+MongoDB with Mongoose. Core collections: `users`, `patients`,
+`doctorschedules`, `appointments`, `auditlogs`, and a `counters` helper for
+sequential patient codes. Collections, relationships, indexes, and the query
+optimization strategy are detailed in [docs/DATABASE.md](docs/DATABASE.md).
 
-1. Install dependencies: `cd Backend && npm install`
-2. Copy `.env.example` to `.env` and update `MONGODB_URI`.
-3. Start MongoDB.
-4. Run the development server: `npm run dev`
+## Prerequisites
 
-Build and run production output with `npm run build` and `npm start`.
-The health endpoint is available at `GET /api/v1/health`.
+- Node.js 20+
+- MongoDB 6+ running locally (or a reachable connection string)
 
-### Seed a super admin (for testing)
-
-Create a super admin account to sign in with:
+## Backend setup
 
 ```bash
-cd Backend && npm run seed
+cd Backend
+cp .env.example .env
+# Edit MONGODB_URI and JWT secrets if needed
+npm install
+npm run seed          # creates superadmin@medisync.test
+npm run dev           # http://localhost:3000
 ```
 
-This creates (or resets) the following test account:
+### Seed credentials
 
-| Field    | Value                        |
-| -------- | ---------------------------- |
-| Email    | `superadmin@medisync.test`   |
-| Password | `MediSync@Test2026!`         |
-| Role     | `SUPER_ADMIN`                |
+| Field    | Value                      |
+| -------- | -------------------------- |
+| Email    | `superadmin@medisync.test` |
+| Password | `MediSync@Test2026!`       |
+| Role     | `SUPER_ADMIN`              |
 
-Override the defaults with the `SEED_SUPER_ADMIN_EMAIL`,
-`SEED_SUPER_ADMIN_PASSWORD`, and `SEED_SUPER_ADMIN_NAME` environment
-variables. The seed is idempotent: re-running it updates the existing
-account instead of creating duplicates. Use these credentials for local
-testing only.
+Override with `SEED_SUPER_ADMIN_EMAIL`, `SEED_SUPER_ADMIN_PASSWORD`, and
+`SEED_SUPER_ADMIN_NAME`.
 
-## Frontend foundation
+### Backend scripts
 
-The frontend lives in `Frontend/` and uses React, TypeScript, Vite,
-Tailwind CSS, React Router, Axios, TanStack Query, and React Hook Form.
-It is intentionally limited to the application shell, routing, and shared
-infrastructure; business features will be added in later phases.
+| Script            | Description                |
+| ----------------- | -------------------------- |
+| `npm run dev`     | Start with hot reload      |
+| `npm run build`   | Compile TypeScript         |
+| `npm start`       | Run compiled output        |
+| `npm run typecheck` | Type-check without emit  |
+| `npm run seed`    | Seed / reset super admin   |
 
-### Folder structure
+## Frontend setup
 
-```text
-Frontend/src/
-├── api/          # Centralized Axios client and API helpers
-├── assets/       # Static assets
-├── components/
-│   ├── common/   # ErrorBoundary, LoadingScreen
-│   ├── layout/   # Sidebar, TopNav, navigation config
-│   └── ui/       # Reusable primitives (Button, Card, PageHeader, EmptyState)
-├── features/     # Feature modules (auth, dashboard, doctor, appointment, schedule)
-├── hooks/        # Shared React hooks
-├── layouts/      # AppLayout (shell) and AuthLayout
-├── lib/          # env access, query client, storage
-├── pages/        # Route-level placeholder pages
-├── providers/    # Global provider composition
-├── routes/       # Router, route paths, Protected/Public guards
-├── services/     # Shared application services
-├── store/        # Client state (reserved)
-├── styles/       # Tailwind entry point and theme
-├── types/        # Shared TypeScript declarations
-└── utils/        # Framework-independent helpers
+```bash
+cd Frontend
+cp .env.example .env
+# VITE_API_BASE_URL=http://localhost:3000/api/v1
+npm install
+npm run dev           # http://localhost:5173
 ```
 
-### Local setup
+### Frontend scripts
 
-1. Install dependencies: `cd Frontend && npm install`
-2. Copy `.env.example` to `.env` and update `VITE_API_BASE_URL` if needed.
-3. Run the development server: `npm run dev` (http://localhost:5173)
+| Script          | Description             |
+| --------------- | ----------------------- |
+| `npm run dev`   | Vite development server |
+| `npm run build` | Type-check + production build |
+| `npm run lint`  | Oxlint                  |
+| `npm run preview` | Preview production build |
 
-Build production output with `npm run build` and preview it with
-`npm run preview`. Routes are guarded client-side: unauthenticated users
-are redirected to `/login`, and the login page currently offers a
-placeholder session until the real authentication flow is implemented.
+## Running the project
+
+Start MongoDB, then run the backend and frontend in separate terminals:
+
+```bash
+# Terminal 1 — API on http://localhost:3000
+cd Backend && npm run dev
+
+# Terminal 2 — SPA on http://localhost:5173
+cd Frontend && npm run dev
+```
+
+Open http://localhost:5173 and sign in with the seed credentials above.
+
+## Environment variables
+
+Copy each `.env.example` to `.env` before running. Full endpoint details live
+in [docs/API.md](docs/API.md).
+
+**Backend** (`Backend/.env`)
+
+| Variable                    | Description                                   |
+| --------------------------- | --------------------------------------------- |
+| `NODE_ENV`                  | `development` \| `production` \| `test`       |
+| `PORT`                      | API port (default `3000`)                     |
+| `MONGODB_URI`               | MongoDB connection string                     |
+| `CORS_ORIGIN`               | Allowed origin(s), comma-separated; include the frontend URL (e.g. `http://localhost:5173`) |
+| `LOG_LEVEL`                 | Pino log level                                |
+| `ACCESS_TOKEN_SECRET`       | JWT access secret (≥ 32 chars)                |
+| `ACCESS_TOKEN_TTL_SECONDS`  | Access token lifetime (default `900`)         |
+| `REFRESH_TOKEN_SECRET`      | JWT refresh secret (≥ 32 chars, distinct)     |
+| `REFRESH_TOKEN_TTL_SECONDS` | Refresh token lifetime (default `604800`)     |
+| `BCRYPT_SALT_ROUNDS`        | bcrypt cost factor (default `12`)             |
+
+**Frontend** (`Frontend/.env`)
+
+| Variable            | Description                                  |
+| ------------------- | -------------------------------------------- |
+| `VITE_API_BASE_URL` | API base URL (e.g. `http://localhost:3000/api/v1`) |
+| `VITE_APP_NAME`     | Display name                                 |
+
+## Roles & capabilities
+
+| Capability                    | SUPER_ADMIN | RECEPTIONIST | DOCTOR |
+| ----------------------------- | ----------- | ------------ | ------ |
+| Manage doctors / receptionists| ✓           |              |        |
+| Manage doctor schedules       | ✓           |              |        |
+| View all dashboards / audits  | ✓           |              |        |
+| Search / create patients      | ✓           | ✓            | view   |
+| Book / update / cancel appts  | ✓           | ✓            |        |
+| Mark patient arrived          | ✓           | ✓            |        |
+| View appointments             | all         | all          | own    |
+| Update consultation notes     |             |              | ✓      |
+
+## Assumptions made
+
+- Each doctor has one schedule; a doctor belongs to a single department.
+- Patients are shared clinic-wide; a new patient is auto-created at booking
+  when no existing record is selected.
+- Consultation notes are recorded by the doctor only after the patient is
+  marked as arrived.
+- Refresh tokens are stored in an httpOnly cookie and rotated on each refresh.
+
+## Known limitations
+
+- No email/SMS notifications or password-reset flow.
+- Concurrency is enforced per slot via a unique index (no distributed locks).
+- Audit logs are read-only and cover login and appointment lifecycle events.
+- Slot times are stored and compared in the server's local timezone.
+
+## Future improvements
+
+- Multi-schedule / recurring availability and per-department rooms.
+- Rate limiting, refresh-token blocklist, and richer audit coverage.
+- Automated test suite and CI, plus Docker Compose for one-command startup.
+
+## Documentation
+
+- [API documentation](docs/API.md)
+- [Database schema](docs/DATABASE.md)
+- [Engineering decisions](ENGINEERING_DECISIONS.md)
+
+## Health check
+
+```bash
+curl http://localhost:3000/api/v1/health
+```

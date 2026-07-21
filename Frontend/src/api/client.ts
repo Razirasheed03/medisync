@@ -4,7 +4,7 @@ import { refreshSession } from '@/features/auth/services/authService'
 import { env } from '@/lib/env'
 import { tokenStorage } from '@/lib/storage'
 import { authStore } from '@/store/authStore'
-import type { ApiErrorResponse } from '@/types'
+import type { ApiErrorResponse, ApiValidationIssue } from '@/types'
 
 interface RetriableRequestConfig extends InternalAxiosRequestConfig {
   /** Marks a request that has already been retried after a token refresh. */
@@ -83,4 +83,13 @@ export function getApiErrorMessage(error: unknown): string {
   }
 
   return 'An unexpected error occurred'
+}
+
+/** Extracts field-level validation issues from an API error, if present. */
+export function getApiValidationIssues(error: unknown): ApiValidationIssue[] {
+  if (axios.isAxiosError<ApiErrorResponse>(error)) {
+    return error.response?.data?.data?.issues ?? []
+  }
+
+  return []
 }

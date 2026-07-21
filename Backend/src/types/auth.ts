@@ -15,3 +15,8 @@ export interface AuthenticatedUser {
   readonly id: string;
   readonly role: UserRole;
 }
+
+/** Request-scoped identity, enriched with the display name for auditing. */
+export interface RequestUser extends AuthenticatedUser {
+  readonly name: string;
+}

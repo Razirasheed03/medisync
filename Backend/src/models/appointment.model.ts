@@ -8,18 +8,23 @@ import {
 
 import {
   APPOINTMENT_STATUSES,
+  SLOT_HOLDING_STATUSES,
   type AppointmentStatus,
 } from "../constants/appointment-status.js";
+import { DEPARTMENTS, type Department } from "../constants/department.js";
 
 export interface Appointment {
+  patient: Types.ObjectId;
   patientName: string;
-  patientEmail: string;
+  patientEmail?: string;
   patientPhone: string;
   doctor: Types.ObjectId;
+  department: Department;
   appointmentDate: string;
   startTime: string;
   endTime: string;
   status: AppointmentStatus;
+  purpose?: string;
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -32,6 +37,12 @@ const timePattern = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 
 const appointmentSchema = new Schema<Appointment, Model<Appointment>>(
   {
+    patient: {
+      type: Schema.Types.ObjectId,
+      ref: "Patient",
+      required: true,
+      index: true,
+    },
     patientName: {
       type: String,
       required: true,
@@ -41,7 +52,6 @@ const appointmentSchema = new Schema<Appointment, Model<Appointment>>(
     },
     patientEmail: {
       type: String,
-      required: true,
       trim: true,
       lowercase: true,
       maxlength: 254,
@@ -55,6 +65,12 @@ const appointmentSchema = new Schema<Appointment, Model<Appointment>>(
     doctor: {
       type: Schema.Types.ObjectId,
       ref: "User",
+      required: true,
+      index: true,
+    },
+    department: {
+      type: String,
+      enum: DEPARTMENTS,
       required: true,
       index: true,
     },
@@ -81,6 +97,11 @@ const appointmentSchema = new Schema<Appointment, Model<Appointment>>(
       required: true,
       index: true,
     },
+    purpose: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+    },
     notes: {
       type: String,
       trim: true,
@@ -99,6 +120,11 @@ appointmentSchema.index({
   endTime: 1,
 });
 
+appointmentSchema.index({ patientName: 1 });
+appointmentSchema.index({ patientPhone: 1 });
+
+// Named explicitly so the partial filter can evolve (e.g. new statuses)
+// without colliding with a previously auto-named index in existing databases.
 appointmentSchema.index(
   {
     doctor: 1,
@@ -107,9 +133,10 @@ appointmentSchema.index(
     endTime: 1,
   },
   {
+    name: "unique_active_doctor_slot",
     unique: true,
     partialFilterExpression: {
-      status: { $in: ["BOOKED", "COMPLETED"] },
+      status: { $in: [...SLOT_HOLDING_STATUSES] },
     },
   },
 );

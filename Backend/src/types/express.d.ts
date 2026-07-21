@@ -1,8 +1,8 @@
-import type { AuthenticatedUser } from "./auth.js";
+import type { RequestUser } from "./auth.js";
 
 declare global {
   namespace Express {
-    interface User extends AuthenticatedUser {}
+    interface User extends RequestUser {}
 
     interface Request {
       user?: User;

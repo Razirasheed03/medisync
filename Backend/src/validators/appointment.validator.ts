@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { APPOINTMENT_STATUSES } from "../constants/appointment-status.js";
+import { DEPARTMENTS } from "../constants/department.js";
 
 const objectIdSchema = z
   .string()
@@ -27,23 +28,26 @@ const appointmentDateSchema = z
   .string()
   .refine(isCalendarDate, "Date must be a valid date in YYYY-MM-DD format");
 
-const appointmentFields = {
-  patientName: z.string().trim().min(2).max(100),
-  patientEmail: z.string().trim().email().max(254),
-  patientPhone: z
-    .string()
-    .trim()
-    .min(7)
-    .max(30)
-    .regex(
-      /^\+?[0-9\s().-]+$/,
-      "Phone number contains unsupported characters",
-    ),
+const patientNameSchema = z.string().trim().min(2).max(100);
+const patientEmailSchema = z
+  .email()
+  .max(254)
+  .transform((email) => email.toLowerCase());
+const patientPhoneSchema = z
+  .string()
+  .trim()
+  .min(7)
+  .max(30)
+  .regex(
+    /^\+?[0-9\s().-]+$/,
+    "Phone number contains unsupported characters",
+  );
+
+const slotFields = {
   doctorId: objectIdSchema,
   appointmentDate: appointmentDateSchema,
   startTime: timeSchema,
   endTime: timeSchema,
-  notes: z.string().trim().max(2000).optional(),
 };
 
 const validateTimeRange = (
@@ -66,21 +70,51 @@ const validateTimeRange = (
   }
 };
 
+/**
+ * Booking works with either an existing patient (`patientId`) or inline
+ * new-patient details, which auto-create a patient record.
+ */
 export const createAppointmentBodySchema = z
-  .object(appointmentFields)
+  .object({
+    patientId: objectIdSchema.optional(),
+    patientName: patientNameSchema.optional(),
+    patientEmail: patientEmailSchema.optional(),
+    patientPhone: patientPhoneSchema.optional(),
+    ...slotFields,
+    purpose: z.string().trim().max(500).optional(),
+    notes: z.string().trim().max(2000).optional(),
+  })
   .strict()
-  .superRefine(validateTimeRange);
+  .superRefine((value, context) => {
+    validateTimeRange(value, context);
+
+    if (value.patientId !== undefined) return;
+
+    if (value.patientName === undefined) {
+      context.addIssue({
+        code: "custom",
+        path: ["patientName"],
+        message: "Patient name is required when patientId is not provided",
+      });
+    }
+
+    if (value.patientPhone === undefined) {
+      context.addIssue({
+        code: "custom",
+        path: ["patientPhone"],
+        message: "Patient phone is required when patientId is not provided",
+      });
+    }
+  });
 
 export const updateAppointmentBodySchema = z
   .object({
-    patientName: appointmentFields.patientName.optional(),
-    patientEmail: appointmentFields.patientEmail.optional(),
-    patientPhone: appointmentFields.patientPhone.optional(),
-    doctorId: appointmentFields.doctorId.optional(),
-    appointmentDate: appointmentFields.appointmentDate.optional(),
-    startTime: appointmentFields.startTime.optional(),
-    endTime: appointmentFields.endTime.optional(),
+    doctorId: slotFields.doctorId.optional(),
+    appointmentDate: slotFields.appointmentDate.optional(),
+    startTime: slotFields.startTime.optional(),
+    endTime: slotFields.endTime.optional(),
     status: z.enum(APPOINTMENT_STATUSES).optional(),
+    purpose: z.string().trim().max(500).nullable().optional(),
     notes: z.string().trim().max(2000).nullable().optional(),
   })
   .strict()
@@ -97,8 +131,12 @@ export const appointmentIdParamsSchema = z
 
 export const listAppointmentsQuerySchema = z
   .object({
+    search: z.string().trim().max(100).optional(),
     doctorId: objectIdSchema.optional(),
+    department: z.enum(DEPARTMENTS).optional(),
     date: appointmentDateSchema.optional(),
+    dateFrom: appointmentDateSchema.optional(),
+    dateTo: appointmentDateSchema.optional(),
     status: z.enum(APPOINTMENT_STATUSES).optional(),
     page: z
       .string()
@@ -111,7 +149,20 @@ export const listAppointmentsQuerySchema = z
       .optional(),
     sortOrder: z.enum(["asc", "desc"]).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (
+      value.dateFrom !== undefined &&
+      value.dateTo !== undefined &&
+      value.dateTo < value.dateFrom
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["dateTo"],
+        message: "dateTo must be on or after dateFrom",
+      });
+    }
+  });
 
 export type CreateAppointmentBody = z.infer<
   typeof createAppointmentBodySchema
@@ -119,4 +170,6 @@ export type CreateAppointmentBody = z.infer<
 export type UpdateAppointmentBody = z.infer<
   typeof updateAppointmentBodySchema
 >;
-
+export type ListAppointmentsQuery = z.infer<
+  typeof listAppointmentsQuerySchema
+>;

@@ -7,6 +7,7 @@ import {
   type WorkingDay,
 } from "../models/doctor-schedule.model.js";
 import { UserModel } from "../models/user.model.js";
+import type { RequestUser } from "../types/auth.js";
 import { ApiError } from "../utils/api-error.js";
 import type {
   CreateDoctorScheduleBody,
@@ -104,6 +105,7 @@ export const createDoctorSchedule = async (
   const doctorExists = await UserModel.exists({
     _id: input.doctorId,
     role: "DOCTOR",
+    status: { $ne: "INACTIVE" },
   });
 
   if (!doctorExists) {
@@ -123,17 +125,27 @@ export const createDoctorSchedule = async (
   }
 };
 
-export const listDoctorSchedules = async (): Promise<
-  readonly DoctorScheduleResponse[]
-> => {
-  const schedules = await DoctorScheduleModel.find().sort({ doctorId: 1 });
+export const listDoctorSchedules = async (
+  actor: RequestUser,
+): Promise<readonly DoctorScheduleResponse[]> => {
+  // Doctors only ever see their own schedule.
+  const filter = actor.role === "DOCTOR" ? { doctorId: actor.id } : {};
+  const schedules = await DoctorScheduleModel.find(filter).sort({
+    doctorId: 1,
+  });
   return schedules.map(toScheduleResponse);
 };
 
 export const getDoctorSchedule = async (
   doctorId: string,
-): Promise<DoctorScheduleResponse> =>
-  toScheduleResponse(await findScheduleOrThrow(doctorId));
+  actor: RequestUser,
+): Promise<DoctorScheduleResponse> => {
+  if (actor.role === "DOCTOR" && doctorId !== actor.id) {
+    throw new ApiError(403, "Doctors can only access their own schedule");
+  }
+
+  return toScheduleResponse(await findScheduleOrThrow(doctorId));
+};
 
 export const updateDoctorSchedule = async (
   doctorId: string,
