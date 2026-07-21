@@ -1,0 +1,6 @@
+export * from './AppointmentsPage'
+export * from './DashboardPage'
+export * from './DoctorSchedulesPage'
+export * from './LoginPage'
+export * from './NotFoundPage'
+export * from './PatientsPage'
