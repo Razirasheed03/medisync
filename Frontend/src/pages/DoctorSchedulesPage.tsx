@@ -6,8 +6,8 @@ import {
   Card,
   EmptyState,
   ErrorState,
+  LoadingBlock,
   PageHeader,
-  Spinner,
 } from '@/components/ui'
 import { useDoctors } from '@/features/appointments'
 import {
@@ -91,12 +91,7 @@ export function DoctorSchedulesPage() {
       />
 
       {schedulesQuery.isPending ? (
-        <div className="flex items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white py-16">
-          <Spinner />
-          <span className="text-sm font-medium text-slate-500">
-            Loading schedules…
-          </span>
-        </div>
+        <LoadingBlock label="Loading schedules…" variant="schedules" />
       ) : schedulesQuery.isError ? (
         <ErrorState
           message={getApiErrorMessage(schedulesQuery.error)}
@@ -114,19 +109,19 @@ export function DoctorSchedulesPage() {
       ) : (
         <div className="flex flex-col gap-4">
           {schedulesQuery.data.map((schedule) => (
-            <Card key={schedule.id} className="p-4 sm:p-6">
+            <Card key={schedule.id} className="p-4 sm:p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-base font-semibold text-slate-900">
+                  <h2 className="text-base font-semibold text-ink">
                     {doctorNames.get(schedule.doctorId) ?? schedule.doctorId}
                   </h2>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-muted">
                     Slot duration: {schedule.slotDuration} minutes ·{' '}
                     <span
                       className={
                         schedule.isActive
-                          ? 'font-medium text-emerald-700'
-                          : 'font-medium text-slate-500'
+                          ? 'text-success'
+                          : 'text-muted'
                       }
                     >
                       {schedule.isActive ? 'Active' : 'Inactive'}
@@ -173,13 +168,13 @@ export function DoctorSchedulesPage() {
                 {schedule.workingDays.map((day) => (
                   <li
                     key={day.day}
-                    className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-sm"
+                    className="rounded-xl border border-glass-border bg-white/65 px-3 py-2 text-sm"
                   >
-                    <p className="font-medium text-slate-900">
+                    <p className="font-medium text-ink">
                       {WEEKDAY_LABELS[day.day]}
                     </p>
                     {day.sessions.map((session, index) => (
-                      <p key={index} className="text-slate-600">
+                      <p key={index} className="text-muted">
                         {formatTimeRange(session.startTime, session.endTime)}
                         {session.breakStartTime && session.breakEndTime
                           ? ` (break ${formatTimeRange(session.breakStartTime, session.breakEndTime)})`

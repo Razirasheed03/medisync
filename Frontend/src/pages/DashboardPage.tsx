@@ -1,5 +1,10 @@
 import { getApiErrorMessage } from '@/api/client'
-import { Card, ErrorState, PageHeader, Spinner } from '@/components/ui'
+import {
+  Card,
+  ErrorState,
+  LoadingBlock,
+  PageHeader,
+} from '@/components/ui'
 import { useDashboard } from '@/features/dashboard'
 import type { UserRole } from '@/features/auth'
 import { useAuth } from '@/store'
@@ -32,9 +37,9 @@ const statsByRole: Record<
 }
 
 const roleTitles: Record<UserRole, string> = {
-  SUPER_ADMIN: 'Admin Dashboard',
-  RECEPTIONIST: 'Reception Dashboard',
-  DOCTOR: 'Doctor Dashboard',
+  SUPER_ADMIN: 'Dashboard',
+  RECEPTIONIST: 'Dashboard',
+  DOCTOR: 'Dashboard',
 }
 
 export function DashboardPage() {
@@ -52,19 +57,14 @@ export function DashboardPage() {
       />
 
       {dashboardQuery.isPending ? (
-        <div className="flex items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white py-16">
-          <Spinner />
-          <span className="text-sm font-medium text-slate-500">
-            Loading dashboard…
-          </span>
-        </div>
+        <LoadingBlock label="Loading dashboard…" variant="cards" count={6} />
       ) : dashboardQuery.isError ? (
         <ErrorState
           message={getApiErrorMessage(dashboardQuery.error)}
           onRetry={() => void dashboardQuery.refetch()}
         />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {statsByRole[role].map((stat) => {
             const value =
               (dashboardQuery.data as unknown as Record<string, number>)[
@@ -72,11 +72,9 @@ export function DashboardPage() {
               ] ?? 0
 
             return (
-              <Card key={stat.key}>
-                <p className="text-sm font-medium text-slate-500">
-                  {stat.label}
-                </p>
-                <p className="mt-2 text-3xl font-bold text-slate-900">
+              <Card key={stat.key} className="glass-panel-hover p-4 sm:p-5">
+                <p className="text-sm text-muted">{stat.label}</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-ink">
                   {value}
                 </p>
               </Card>

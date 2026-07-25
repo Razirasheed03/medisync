@@ -335,7 +335,7 @@ function WorkingDayEditor({
   const dayError = errors.workingDays?.[dayIndex]
 
   return (
-    <div className="rounded-xl border border-slate-200 p-4">
+    <div className="rounded-2xl border border-glass-border bg-white/65 p-4">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <Select
           label="Day"

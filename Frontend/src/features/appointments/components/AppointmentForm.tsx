@@ -251,24 +251,24 @@ export function AppointmentForm({
       {serverError ? (
         <div
           role="alert"
-          className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700"
+          className="rounded-xl border border-danger/20 bg-red-50/80 px-3 py-2 text-sm text-danger"
         >
           {serverError}
         </div>
       ) : null}
 
       {isEditMode && appointment ? (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <div className="rounded-xl border border-glass-border bg-white/65 px-4 py-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted">
             Patient
           </p>
-          <p className="mt-1 text-sm font-medium text-slate-900">
+          <p className="mt-1 text-sm font-medium text-ink">
             {appointment.patientName} · {appointment.patientPhone}
           </p>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          <div className="flex rounded-lg border border-slate-200 p-1">
+          <div className="flex rounded-xl border border-glass-border bg-white/60 p-1">
             {(
               [
                 ['existing', 'Existing patient'],
@@ -288,10 +288,10 @@ export function AppointmentForm({
                   ])
                 }}
                 className={cn(
-                  'flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                  'flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
                   patientMode === mode
-                    ? 'bg-brand-600 text-white'
-                    : 'text-slate-600 hover:bg-slate-100',
+                    ? 'bg-brand-500 text-white shadow-sm shadow-brand-500/20'
+                    : 'text-muted hover:bg-white/60 hover:text-ink',
                 )}
               >
                 {label}
@@ -380,7 +380,7 @@ export function AppointmentForm({
       </div>
 
       <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-slate-700">Slots</span>
+        <span className="text-sm font-medium text-ink/80">Slots</span>
         <SlotPicker
           doctorId={doctorId}
           date={appointmentDate}

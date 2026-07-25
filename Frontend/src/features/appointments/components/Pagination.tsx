@@ -14,7 +14,7 @@ export function Pagination({ pagination, onPageChange }: PaginationProps) {
 
   return (
     <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-muted">
         Page {page} of {Math.max(totalPages, 1)} · {total}{' '}
         {total === 1 ? 'appointment' : 'appointments'}
       </p>

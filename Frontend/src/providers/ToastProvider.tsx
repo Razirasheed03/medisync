@@ -48,8 +48,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             onClick={() => dismiss(toast.id)}
             className={
               toast.variant === 'success'
-                ? 'rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-left text-sm font-medium text-emerald-800 shadow-lg'
-                : 'rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-left text-sm font-medium text-red-800 shadow-lg'
+                ? 'glass-panel dialog-in rounded-2xl px-4 py-3 text-left text-sm text-ink'
+                : 'glass-panel dialog-in rounded-2xl border-danger/20 px-4 py-3 text-left text-sm text-danger'
             }
           >
             {toast.message}

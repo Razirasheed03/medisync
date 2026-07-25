@@ -8,10 +8,10 @@ export function LoadingScreen({ label = 'Loading…' }: LoadingScreenProps) {
     <div
       role="status"
       aria-live="polite"
-      className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50"
+      className="flex min-h-screen flex-col items-center justify-center gap-3"
     >
-      <span className="size-10 animate-spin rounded-full border-4 border-brand-200 border-t-brand-600" />
-      <p className="text-sm font-medium text-slate-500">{label}</p>
+      <span className="size-8 animate-spin rounded-full border-2 border-brand-100 border-t-brand-500" />
+      <p className="text-sm text-muted">{label}</p>
     </div>
   )
 }

@@ -42,18 +42,18 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/25 p-4 backdrop-blur-sm"
       onClick={onCancel}
     >
       <Card
         role="alertdialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full max-w-md"
+        className="dialog-in w-full max-w-md"
         onClick={(event) => event.stopPropagation()}
       >
-        <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-        <p className="mt-2 text-sm text-slate-600">{description}</p>
+        <h2 className="text-base font-semibold text-ink">{title}</h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted">{description}</p>
         <div className="mt-6 flex justify-end gap-2">
           <Button
             variant="secondary"
@@ -64,7 +64,7 @@ export function ConfirmDialog({
           </Button>
           <Button
             autoFocus
-            className="bg-red-600 hover:bg-red-700 focus-visible:outline-red-600"
+            variant="danger"
             onClick={onConfirm}
             disabled={isConfirming}
           >

@@ -8,9 +8,9 @@ import {
   EmptyState,
   ErrorState,
   Input,
+  LoadingBlock,
   PageHeader,
   Select,
-  Spinner,
 } from '@/components/ui'
 import {
   DEPARTMENTS,
@@ -56,7 +56,7 @@ export function AppointmentSchedulerPage() {
         }
       />
 
-      <Card className="p-4 sm:p-6">
+      <Card className="p-4 sm:p-5">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Select
             label="Department"
@@ -111,19 +111,14 @@ export function AppointmentSchedulerPage() {
           description="Choose a department (optional), doctor, and date to view the slot grid."
         />
       ) : doctorsQuery.isPending ? (
-        <div className="flex items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white py-16">
-          <Spinner />
-          <span className="text-sm font-medium text-slate-500">
-            Loading doctors…
-          </span>
-        </div>
+        <LoadingBlock label="Loading doctors…" variant="slots" />
       ) : (
-        <Card className="p-4 sm:p-6">
+        <Card className="p-4 sm:p-5">
           <div className="mb-4">
-            <h2 className="text-base font-semibold text-slate-900">
+            <h2 className="text-base font-semibold text-ink">
               {selectedDoctor?.name ?? 'Doctor'} · {date}
             </h2>
-            <p className="text-sm text-slate-500">
+            <p className="mt-0.5 text-sm text-muted">
               Click an available slot to start booking.
             </p>
           </div>

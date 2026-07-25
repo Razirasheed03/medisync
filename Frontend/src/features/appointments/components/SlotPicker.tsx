@@ -1,5 +1,5 @@
 import { getApiErrorMessage } from '@/api/client'
-import { Spinner } from '@/components/ui'
+import { LoadingBlock } from '@/components/ui'
 import { cn, formatTimeRange } from '@/utils'
 
 import { useDoctorSlots } from '../hooks'
@@ -34,24 +34,19 @@ export function SlotPicker({
 
   if (!doctorId || !date) {
     return (
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-muted">
         Select a doctor and date to see available slots.
       </p>
     )
   }
 
   if (slotsQuery.isPending) {
-    return (
-      <div className="flex items-center gap-2 py-4 text-sm text-slate-500">
-        <Spinner className="size-4" />
-        Loading available slots…
-      </div>
-    )
+    return <LoadingBlock label="Loading available slots…" variant="slots" />
   }
 
   if (slotsQuery.isError) {
     return (
-      <p role="alert" className="text-sm font-medium text-red-600">
+      <p role="alert" className="text-sm text-danger">
         {getApiErrorMessage(slotsQuery.error)}
       </p>
     )
@@ -61,7 +56,7 @@ export function SlotPicker({
 
   if (slots.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">
+      <p className="rounded-xl border border-dashed border-glass-border bg-white/60 px-4 py-6 text-center text-sm text-muted">
         No slots for this doctor on the selected date.
       </p>
     )
@@ -87,12 +82,12 @@ export function SlotPicker({
               aria-pressed={isSelected}
               onClick={() => onSelect(slot)}
               className={cn(
-                'rounded-lg border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600',
+                'rounded-xl border px-3 py-2 text-sm font-medium transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
                 isBooked
-                  ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 line-through'
+                  ? 'cursor-not-allowed border-glass-border/70 bg-white/40 text-muted/60 line-through'
                   : isSelected
-                    ? 'border-brand-600 bg-brand-600 text-white'
-                    : 'border-slate-300 bg-white text-slate-700 hover:border-brand-400 hover:bg-brand-50',
+                    ? 'border-brand-500 bg-brand-500 text-white shadow-sm shadow-brand-500/20'
+                    : 'border-glass-border bg-white/70 text-ink hover:border-brand-300 hover:bg-brand-50',
               )}
               title={isBooked ? 'Slot already booked' : undefined}
             >
@@ -101,18 +96,18 @@ export function SlotPicker({
           )
         })}
       </div>
-      <div className="flex items-center gap-4 text-xs text-slate-500">
+      <div className="flex items-center gap-4 text-xs text-muted">
         <span className="flex items-center gap-1.5">
-          <span className="size-2.5 rounded-full border border-slate-300 bg-white" />
+          <span className="size-2.5 rounded-full border border-glass-border bg-white" />
           Available
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="size-2.5 rounded-full bg-slate-300" />
+          <span className="size-2.5 rounded-full bg-slate-300/80" />
           Booked
         </span>
       </div>
       {error ? (
-        <p role="alert" className="text-xs font-medium text-red-600">
+        <p role="alert" className="text-xs text-danger">
           {error}
         </p>
       ) : null}

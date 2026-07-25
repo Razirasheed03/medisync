@@ -10,6 +10,11 @@ import { Button, Card, Input } from '@/components/ui'
 import { login } from '@/features/auth'
 import { paths } from '@/routes/paths'
 
+const TEST_ADMIN_CREDENTIALS = {
+  email: 'superadmin@medisync.test',
+  password: 'MediSync@Test2026!',
+} as const
+
 const loginSchema = z.object({
   email: z
     .string()
@@ -32,6 +37,7 @@ export function LoginPage() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -40,6 +46,18 @@ export function LoginPage() {
 
   const redirectTo =
     (location.state as LocationState | null)?.from?.pathname ?? paths.dashboard
+
+  const fillTestCredentials = () => {
+    setServerError(null)
+    setValue('email', TEST_ADMIN_CREDENTIALS.email, {
+      shouldDirty: true,
+      shouldValidate: true,
+    })
+    setValue('password', TEST_ADMIN_CREDENTIALS.password, {
+      shouldDirty: true,
+      shouldValidate: true,
+    })
+  }
 
   const onSubmit = async (values: LoginFormValues) => {
     setServerError(null)
@@ -53,10 +71,10 @@ export function LoginPage() {
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <h1 className="text-xl font-bold text-slate-900">Sign in</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Enter your credentials to access your workspace.
+    <Card className="w-full max-w-sm">
+      <h1 className="text-lg font-semibold text-ink">Sign in</h1>
+      <p className="mt-1.5 text-sm text-muted">
+        Use your clinic credentials to continue.
       </p>
 
       <form
@@ -67,7 +85,7 @@ export function LoginPage() {
         {serverError ? (
           <div
             role="alert"
-            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700"
+            className="rounded-xl border border-danger/20 bg-red-50/80 px-3 py-2 text-sm text-danger"
           >
             {serverError}
           </div>
@@ -77,7 +95,7 @@ export function LoginPage() {
           label="Email"
           type="email"
           autoComplete="email"
-          placeholder="you@example.com"
+          placeholder="you@clinic.com"
           error={errors.email?.message}
           {...register('email')}
         />
@@ -91,10 +109,40 @@ export function LoginPage() {
           {...register('password')}
         />
 
-        <Button type="submit" disabled={isSubmitting} className="mt-2 w-full">
+        <Button type="submit" disabled={isSubmitting} className="mt-1 w-full">
           {isSubmitting ? 'Signing in…' : 'Sign in'}
         </Button>
       </form>
+
+      <div className="mt-5 rounded-xl border border-brand-200/80 bg-brand-50/70 px-4 py-3">
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
+            Test admin credentials
+          </p>
+          <button
+            type="button"
+            onClick={fillTestCredentials}
+            disabled={isSubmitting}
+            className="shrink-0 rounded-lg bg-white/80 px-2.5 py-1 text-xs font-medium text-brand-700 transition-colors duration-200 hover:bg-white hover:text-brand-800 disabled:pointer-events-none disabled:opacity-50"
+          >
+            Use these
+          </button>
+        </div>
+        <dl className="mt-2 space-y-1.5 text-xs">
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-muted">Email</dt>
+            <dd className="font-mono font-medium text-ink">
+              {TEST_ADMIN_CREDENTIALS.email}
+            </dd>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-muted">Password</dt>
+            <dd className="font-mono font-medium text-ink">
+              {TEST_ADMIN_CREDENTIALS.password}
+            </dd>
+          </div>
+        </dl>
+      </div>
     </Card>
   )
 }

@@ -11,8 +11,8 @@ import {
   Card,
   ConfirmDialog,
   ErrorState,
+  LoadingBlock,
   PageHeader,
-  Spinner,
   Textarea,
 } from '@/components/ui'
 import {
@@ -60,14 +60,7 @@ export function AppointmentDetailsPage() {
   })
 
   if (appointmentQuery.isPending) {
-    return (
-      <div className="flex items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white py-16">
-        <Spinner />
-        <span className="text-sm font-medium text-slate-500">
-          Loading appointment…
-        </span>
-      </div>
-    )
+    return <LoadingBlock label="Loading appointment…" variant="detail" />
   }
 
   if (appointmentQuery.isError) {
@@ -178,7 +171,7 @@ export function AppointmentDetailsPage() {
                     : 'Mark patient arrived'}
                 </Button>
                 <Button
-                  className="bg-red-600 hover:bg-red-700 focus-visible:outline-red-600"
+                  variant="danger"
                   onClick={() => setIsCancelDialogOpen(true)}
                 >
                   Cancel appointment
@@ -187,7 +180,7 @@ export function AppointmentDetailsPage() {
             ) : null}
             {canManage && appointment.status === 'ARRIVED' ? (
               <Button
-                className="bg-red-600 hover:bg-red-700 focus-visible:outline-red-600"
+                variant="danger"
                 onClick={() => setIsCancelDialogOpen(true)}
               >
                 Cancel appointment
@@ -200,32 +193,32 @@ export function AppointmentDetailsPage() {
       {actionError ? (
         <div
           role="alert"
-          className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700"
+          className="rounded-xl border border-danger/20 bg-red-50/80 px-3 py-2 text-sm text-danger"
         >
           {actionError}
         </div>
       ) : null}
 
       <Card>
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-          <h2 className="text-base font-semibold text-slate-900">Overview</h2>
+        <div className="flex items-center justify-between border-b border-glass-border pb-4">
+          <h2 className="text-base font-semibold text-ink">Overview</h2>
           <StatusBadge status={appointment.status} />
         </div>
 
         <dl className="grid grid-cols-1 gap-x-8 gap-y-4 pt-4 sm:grid-cols-2">
           {details.map(({ label, value }) => (
             <div key={label}>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <dt className="text-xs font-medium uppercase tracking-wide text-muted">
                 {label}
               </dt>
-              <dd className="mt-1 text-sm text-slate-900">{value}</dd>
+              <dd className="mt-1 text-sm text-ink">{value}</dd>
             </div>
           ))}
         </dl>
       </Card>
 
       <Card>
-        <h2 className="mb-4 text-base font-semibold text-slate-900">
+        <h2 className="mb-4 text-base font-semibold text-ink">
           Consultation notes
         </h2>
         {canEditNotes ? (
@@ -247,11 +240,11 @@ export function AppointmentDetailsPage() {
           </form>
         ) : (
           <>
-            <p className="whitespace-pre-wrap text-sm text-slate-900">
+            <p className="whitespace-pre-wrap text-sm text-ink">
               {appointment.notes || '—'}
             </p>
             {isDoctor && appointment.status === 'BOOKED' ? (
-              <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+              <p className="mt-3 rounded-xl border border-warning/20 bg-amber-50/80 px-3 py-2 text-xs text-warning">
                 Notes can be recorded once the receptionist marks the patient
                 as arrived.
               </p>

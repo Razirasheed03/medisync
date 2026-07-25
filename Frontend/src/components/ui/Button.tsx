@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes } from 'react'
 
 import { cn } from '@/utils'
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost'
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant
@@ -10,10 +10,13 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'bg-brand-600 text-white hover:bg-brand-700 focus-visible:outline-brand-600',
+    'bg-linear-to-b from-brand-500 to-brand-600 text-white shadow-sm shadow-brand-500/20 hover:from-brand-600 hover:to-brand-700 focus-visible:outline-brand-500',
   secondary:
-    'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus-visible:outline-slate-400',
-  ghost: 'text-slate-600 hover:bg-slate-100 focus-visible:outline-slate-400',
+    'border border-glass-border bg-white/70 text-ink shadow-sm backdrop-blur-sm hover:bg-white/90 focus-visible:outline-brand-300',
+  ghost:
+    'text-muted hover:bg-white/70 hover:text-ink focus-visible:outline-brand-300',
+  danger:
+    'bg-linear-to-b from-danger to-[#dc2626] text-white shadow-sm shadow-danger/20 hover:brightness-95 focus-visible:outline-danger',
 }
 
 export function Button({
@@ -26,7 +29,7 @@ export function Button({
     <button
       type={type}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-50',
+        'inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-50',
         variantClasses[variant],
         className,
       )}

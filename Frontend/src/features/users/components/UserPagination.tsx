@@ -13,7 +13,7 @@ export function UsersPagination({
 
   return (
     <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-muted">
         Page {pagination.page} of {Math.max(pagination.totalPages, 1)} ·{' '}
         {pagination.total} {pagination.total === 1 ? 'user' : 'users'}
       </p>

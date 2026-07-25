@@ -7,6 +7,7 @@ import {
   EmptyState,
   ErrorState,
   Input,
+  LoadingBlock,
   PageHeader,
   Spinner,
 } from '@/components/ui'
@@ -35,7 +36,6 @@ export function PatientsPage() {
   const [searchInput, setSearchInput] = useState('')
   const [isCreating, setIsCreating] = useState(false)
 
-  // Live search: apply the input once the user pauses typing.
   const debouncedSearch = useDebouncedValue(searchInput.trim(), 350)
   useEffect(() => {
     setFilters((current) => {
@@ -82,7 +82,7 @@ export function PatientsPage() {
         }
       />
 
-      <Card className="p-4 sm:p-6">
+      <Card className="p-4 sm:p-5">
         <div className="relative">
           <Input
             label="Search"
@@ -98,12 +98,7 @@ export function PatientsPage() {
       </Card>
 
       {patientsQuery.isPending ? (
-        <div className="flex items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white py-16">
-          <Spinner />
-          <span className="text-sm font-medium text-slate-500">
-            Loading patients…
-          </span>
-        </div>
+        <LoadingBlock label="Loading patients…" variant="table" count={5} />
       ) : patientsQuery.isError ? (
         <ErrorState
           message={getApiErrorMessage(patientsQuery.error)}
@@ -123,29 +118,29 @@ export function PatientsPage() {
           <Card className="overflow-x-auto p-0">
             <table className="w-full min-w-160 text-left text-sm">
               <thead>
-                <tr className="border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  <th className="px-4 py-3 sm:px-6">Patient ID</th>
-                  <th className="px-4 py-3 sm:px-6">Name</th>
-                  <th className="px-4 py-3 sm:px-6">Mobile</th>
-                  <th className="px-4 py-3 sm:px-6">Email</th>
+                <tr className="border-b border-glass-border bg-white/50 text-xs font-medium text-muted">
+                  <th className="px-4 py-3.5 font-medium sm:px-5">Patient ID</th>
+                  <th className="px-4 py-3.5 font-medium sm:px-5">Name</th>
+                  <th className="px-4 py-3.5 font-medium sm:px-5">Mobile</th>
+                  <th className="px-4 py-3.5 font-medium sm:px-5">Email</th>
                 </tr>
               </thead>
               <tbody>
                 {patientsQuery.data.patients.map((patient) => (
                   <tr
                     key={patient.id}
-                    className="border-b border-slate-100 last:border-0"
+                    className="border-b border-slate-100 transition-colors duration-200 last:border-0 hover:bg-white/55"
                   >
-                    <td className="px-4 py-3 font-medium text-slate-900 sm:px-6">
+                    <td className="px-4 py-3.5 font-medium text-ink sm:px-5">
                       {patient.patientCode}
                     </td>
-                    <td className="px-4 py-3 text-slate-700 sm:px-6">
+                    <td className="px-4 py-3.5 text-ink/80 sm:px-5">
                       {patient.name}
                     </td>
-                    <td className="px-4 py-3 text-slate-600 sm:px-6">
+                    <td className="px-4 py-3.5 text-muted sm:px-5">
                       {patient.phone}
                     </td>
-                    <td className="px-4 py-3 text-slate-600 sm:px-6">
+                    <td className="px-4 py-3.5 text-muted sm:px-5">
                       {patient.email ?? '—'}
                     </td>
                   </tr>
@@ -154,8 +149,8 @@ export function PatientsPage() {
             </table>
           </Card>
 
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-500">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-muted">
               Page {patientsQuery.data.pagination.page} of{' '}
               {Math.max(patientsQuery.data.pagination.totalPages, 1)} ·{' '}
               {patientsQuery.data.pagination.total} patients
