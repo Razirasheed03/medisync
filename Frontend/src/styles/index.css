@@ -125,3 +125,18 @@ body {
 .dialog-in {
   animation: dialog-in 200ms ease-out;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer {
+    animation: none;
+    background: rgba(226, 232, 240, 0.85);
+  }
+
+  .dialog-in {
+    animation: none;
+  }
+
+  .glass-panel-hover:hover {
+    transform: none;
+  }
+}

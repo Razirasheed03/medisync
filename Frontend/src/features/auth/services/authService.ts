@@ -1,4 +1,6 @@
 import { apiClient } from '@/api/client'
+import { markSessionExpired } from '@/lib/sessionFlags'
+import { tokenStorage } from '@/lib/storage'
 import { authStore } from '@/store/authStore'
 import type { ApiResponse } from '@/types'
 
@@ -47,14 +49,31 @@ export function refreshSession(): Promise<AuthSession> {
 
 /**
  * Attempts to restore the session on application startup using the
- * refresh cookie. Resolves the auth status either way; never throws.
+ * refresh cookie. Single-flight for the page lifetime so React
+ * StrictMode double-effects share one restore (avoids refresh-token
+ * rotation races). Resolves the auth status either way; never throws.
  */
-export async function restoreSession(): Promise<void> {
-  try {
-    await refreshSession()
-  } catch {
-    authStore.clearSession()
+let restorePromise: Promise<void> | null = null
+
+export function restoreSession(): Promise<void> {
+  if (authStore.getState().isAuthenticated) {
+    return Promise.resolve()
   }
+
+  restorePromise ??= (async () => {
+    try {
+      await refreshSession()
+    } catch {
+      // Only treat this as an expired session if we previously held an
+      // access token — anonymous first visits also fail refresh quietly.
+      if (tokenStorage.get()) {
+        markSessionExpired()
+      }
+      authStore.clearSession()
+    }
+  })()
+
+  return restorePromise
 }
 
 /**
@@ -67,5 +86,17 @@ export async function logout(): Promise<void> {
     await apiClient.post('/auth/logout', {})
   } finally {
     authStore.clearSession()
+  }
+}
+
+/** Reads JWT `exp` (ms) from an access token without verifying the signature. */
+export function getAccessTokenExpiryMs(token: string): number | null {
+  try {
+    const payloadSegment = token.split('.')[1]
+    if (!payloadSegment) return null
+    const payload = JSON.parse(atob(payloadSegment)) as { exp?: unknown }
+    return typeof payload.exp === 'number' ? payload.exp * 1000 : null
+  } catch {
+    return null
   }
 }

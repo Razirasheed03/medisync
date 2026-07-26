@@ -1,9 +1,8 @@
 import { useEffect } from 'react'
-
 import { useQueryClient } from '@tanstack/react-query'
 import { io, type Socket } from 'socket.io-client'
 
-import { appointmentKeys, doctorKeys } from '@/features/appointments'
+import { appointmentKeys } from '@/features/appointments'
 import { dashboardKeys } from '@/features/dashboard'
 import { env } from '@/lib/env'
 import { useAuth } from '@/store'
@@ -15,25 +14,30 @@ function getSocketOrigin(): string {
 
 /**
  * Opens an authenticated Socket.IO connection while the user is signed
- * in and invalidates appointment / slot / dashboard queries whenever an
- * appointment lifecycle event arrives.
+ * in and invalidates active appointment / dashboard queries whenever an
+ * appointment lifecycle event arrives. Invalidation is debounced to avoid
+ * refetch storms when multiple events arrive close together.
  */
 export function useRealtimeAppointments(): void {
   const { accessToken, isAuthenticated } = useAuth()
   const queryClient = useQueryClient()
 
   useEffect(() => {
-    if (!isAuthenticated || !accessToken) return
+    if (!isAuthenticated || !accessToken || env.configurationError) return
 
     const socket: Socket = io(getSocketOrigin(), {
       auth: { token: accessToken },
       transports: ['websocket', 'polling'],
     })
 
+    let debounceTimer: number | undefined
+
     const invalidate = () => {
-      void queryClient.invalidateQueries({ queryKey: appointmentKeys.all })
-      void queryClient.invalidateQueries({ queryKey: doctorKeys.all })
-      void queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
+      window.clearTimeout(debounceTimer)
+      debounceTimer = window.setTimeout(() => {
+        void queryClient.invalidateQueries({ queryKey: appointmentKeys.all })
+        void queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
+      }, 300)
     }
 
     socket.on('appointment:created', invalidate)
@@ -41,6 +45,7 @@ export function useRealtimeAppointments(): void {
     socket.on('appointment:cancelled', invalidate)
 
     return () => {
+      window.clearTimeout(debounceTimer)
       socket.off('appointment:created', invalidate)
       socket.off('appointment:updated', invalidate)
       socket.off('appointment:cancelled', invalidate)

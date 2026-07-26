@@ -2,6 +2,7 @@ import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 
 import { refreshSession } from '@/features/auth/services/authService'
 import { env } from '@/lib/env'
+import { markSessionExpired } from '@/lib/sessionFlags'
 import { tokenStorage } from '@/lib/storage'
 import { authStore } from '@/store/authStore'
 import type { ApiErrorResponse, ApiValidationIssue } from '@/types'
@@ -66,6 +67,7 @@ apiClient.interceptors.response.use(
     } catch {
       // Refresh failed: end the session. Route guards react to the
       // store update and redirect the user to the login page.
+      markSessionExpired()
       authStore.clearSession()
       return Promise.reject(error)
     }

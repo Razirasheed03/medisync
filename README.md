@@ -173,10 +173,17 @@ in [docs/API.md](docs/API.md).
 
 **Frontend** (`Frontend/.env`)
 
-| Variable            | Description                                  |
-| ------------------- | -------------------------------------------- |
-| `VITE_API_BASE_URL` | API base URL (e.g. `http://localhost:3000/api/v1`) |
-| `VITE_APP_NAME`     | Display name                                 |
+| Variable                     | Description                                  |
+| ---------------------------- | -------------------------------------------- |
+| `VITE_API_BASE_URL`          | API base URL (e.g. `http://localhost:3000/api/v1`) |
+| `VITE_APP_NAME`              | Display name                                 |
+| `VITE_SHOW_TEST_CREDENTIALS` | Optional. Set `true` to show seed-login helpers outside local/dev (never enable in production) |
+
+## Deployment notes
+
+- **SPA deep links:** The frontend ships `vercel.json` (and `public/_redirects`) so hard refresh on routes like `/appointments/:id` serves `index.html`. Configure the equivalent rewrite on any other static host.
+- **Cookies / CORS:** Refresh tokens use `SameSite=Strict` and are scoped to `/api/v1/auth`. Serve the API and UI on the **same site** in production (recommended), and set `CORS_ORIGIN` to the exact frontend origin. Split domains (`app.` vs `api.`) will break silent refresh unless cookie policy is redesigned.
+- **Local CORS:** Backend `.env.example` defaults `CORS_ORIGIN` to `http://localhost:5173` to match Vite.
 
 ## Roles & capabilities
 

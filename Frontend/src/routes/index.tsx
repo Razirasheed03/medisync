@@ -1,8 +1,8 @@
 import { lazy, Suspense } from 'react'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 
-import { LoadingScreen } from '@/components/common'
 import { AppLayout, AuthLayout } from '@/layouts'
+import { LoginPage } from '@/pages/LoginPage'
 
 import { paths } from './paths'
 import { ProtectedRoute } from './ProtectedRoute'
@@ -10,9 +10,6 @@ import { PublicRoute } from './PublicRoute'
 import { RoleRoute } from './RoleRoute'
 import { SuperAdminRoute } from './SuperAdminRoute'
 
-const LoginPage = lazy(() =>
-  import('@/pages/LoginPage').then((m) => ({ default: m.LoginPage })),
-)
 const DashboardPage = lazy(() =>
   import('@/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })),
 )
@@ -117,13 +114,16 @@ const router = createBrowserRouter([
       },
     ],
   },
-  { path: '*', element: <NotFoundPage /> },
+  {
+    path: '*',
+    element: (
+      <Suspense fallback={null}>
+        <NotFoundPage />
+      </Suspense>
+    ),
+  },
 ])
 
 export function AppRoutes() {
-  return (
-    <Suspense fallback={<LoadingScreen />}>
-      <RouterProvider router={router} />
-    </Suspense>
-  )
+  return <RouterProvider router={router} />
 }
